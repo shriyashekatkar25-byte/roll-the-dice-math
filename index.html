@@ -1,0 +1,726 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Monte Carlo, Chapter 1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one module on screen at a time (tabs), each module = same fixed rhythm: Big idea → Picture → Steps → Math translated → Try it → Check yourself */
+:root{
+  --bg:#eef2ee; --surface:#ffffff; --sunk:#e3e9e4; --line:#cdd7cf;
+  --fg:#17221c; --muted:#56655b;
+  --felt:#0f6b47; --felt-ink:#ffffff; --felt-soft:#d6ebe0;
+  --chip:#c2410c; --chip-soft:#fbe5d6;
+  --gold:#a16207; --gold-soft:#fbf0cf;
+  --dot-in:#0f6b47; --dot-out:#c2410c;
+  --f-display:"Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
+  --f-body:"Atkinson Hyperlegible", Verdana, system-ui, sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f1512; --surface:#18211c; --sunk:#111915; --line:#2b3a31;
+  --fg:#e6efe9; --muted:#9db0a4;
+  --felt:#3fbf86; --felt-ink:#06140d; --felt-soft:#173628;
+  --chip:#fb8a4e; --chip-soft:#3a2216;
+  --gold:#f2c14e; --gold-soft:#332a12;
+  --dot-in:#3fbf86; --dot-out:#fb8a4e; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1512; --surface:#18211c; --sunk:#111915; --line:#2b3a31;
+  --fg:#e6efe9; --muted:#9db0a4;
+  --felt:#3fbf86; --felt-ink:#06140d; --felt-soft:#173628;
+  --chip:#fb8a4e; --chip-soft:#3a2216;
+  --gold:#f2c14e; --gold-soft:#332a12;
+  --dot-in:#3fbf86; --dot-out:#fb8a4e; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:17px;line-height:1.6;padding:0 16px 64px}
+.wrap{max-width:860px;margin:0 auto}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;line-height:1.15;margin:0}
+h1{font-size:clamp(28px,5vw,42px);font-weight:800;letter-spacing:-.01em}
+h2{font-size:clamp(22px,3.6vw,30px);font-weight:800}
+h3{font-size:19px;font-weight:600}
+p{margin:0;max-width:66ch}
+code,.mono{font-family:var(--f-mono);font-size:.88em}
+.muted{color:var(--muted)}
+.label{font-size:12px;text-transform:uppercase;letter-spacing:.09em;font-weight:700;color:var(--muted)}
+
+header.top{padding-block:28px 14px;display:grid;gap:10px}
+.recipe{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:6px}
+.recipe span{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:14px}
+.recipe b{color:var(--felt)}
+.recipe i{color:var(--muted);font-style:normal}
+
+nav.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:10px;display:flex;gap:6px;overflow-x:auto;border-bottom:1px solid var(--line)}
+nav.tabs button{flex:0 0 auto;font:inherit;font-size:14px;font-weight:700;border:1px solid var(--line);background:var(--surface);color:var(--fg);padding:7px 12px;border-radius:10px;cursor:pointer;display:flex;gap:6px;align-items:center}
+nav.tabs button[aria-selected="true"]{background:var(--felt);border-color:var(--felt);color:var(--felt-ink)}
+nav.tabs button .tick{width:16px;height:16px;border-radius:50%;border:2px solid currentColor;display:inline-grid;place-items:center;font-size:10px;opacity:.6}
+nav.tabs button.done .tick{opacity:1;background:currentColor}
+nav.tabs button.done .tick::after{content:"✓";color:var(--felt)}
+nav.tabs button[aria-selected="true"].done .tick::after{color:var(--felt-ink);filter:invert(0)}
+nav.tabs button:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+
+section.mod{display:grid;gap:22px;padding-block:24px}
+.meta{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.pill{font-size:13px;font-weight:700;padding:3px 10px;border-radius:999px;background:var(--sunk);color:var(--muted)}
+
+.bigidea{background:var(--felt);color:var(--felt-ink);border-radius:16px;padding:20px 22px;display:grid;gap:6px}
+.bigidea .label{color:inherit;opacity:.8}
+.bigidea p{font-size:20px;line-height:1.45;font-weight:700;max-width:none}
+
+.block{display:grid;gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px;display:grid;gap:12px;min-width:0}
+.analogy{background:var(--gold-soft);border:1px solid transparent;border-radius:14px;padding:16px 20px;display:grid;gap:6px}
+.analogy .label{color:var(--gold)}
+
+ol.steps{list-style:none;margin:0;padding:0;display:grid;gap:10px;counter-reset:s}
+ol.steps li{counter-increment:s;display:grid;grid-template-columns:34px 1fr;gap:12px;align-items:start}
+ol.steps li::before{content:counter(s);width:30px;height:30px;border-radius:50%;background:var(--felt-soft);color:var(--felt);font-weight:800;display:grid;place-items:center;font-family:var(--f-display)}
+ol.steps li > div{min-width:0;padding-top:3px}
+
+/* math translation rows */
+.tx{display:grid;gap:0;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface)}
+.tx .row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:0;border-top:1px solid var(--line)}
+.tx .row:first-child{border-top:0}
+.tx .m{background:var(--sunk);padding:12px 16px;font-family:var(--f-mono);font-size:15px;overflow-x:auto;white-space:nowrap}
+.tx .e{padding:12px 16px}
+@media (max-width:620px){.tx .row{grid-template-columns:1fr}}
+.frac{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;line-height:1.15;margin:0 2px}
+.frac>span:first-child{border-bottom:1.5px solid currentColor;padding:0 3px}
+.hat{position:relative}
+
+pre.r{background:var(--sunk);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:0;overflow-x:auto;font-family:var(--f-mono);font-size:14px;line-height:1.7}
+pre.r .c{color:var(--muted)}
+pre.r .o{color:var(--felt);font-weight:600}
+
+.trap{background:var(--chip-soft);border-radius:14px;padding:16px 20px;display:grid;gap:8px}
+.trap .label{color:var(--chip)}
+.trap ul{margin:0;padding-left:20px;display:grid;gap:6px}
+
+/* demos */
+.demo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:700px){.demo{grid-template-columns:1fr}}
+canvas{width:100%;max-width:100%;aspect-ratio:1/1;background:var(--sunk);border-radius:12px;display:block}
+canvas.wide{aspect-ratio:4/3}
+.controls{display:grid;gap:12px}
+.ctl{display:grid;gap:4px}
+.ctl label{font-weight:700;font-size:14px}
+input[type=range]{width:100%;accent-color:var(--felt)}
+input[type=number]{font:inherit;width:110px;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--fg)}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+button.act{font:inherit;font-weight:700;font-size:15px;border:0;background:var(--felt);color:var(--felt-ink);padding:9px 16px;border-radius:10px;cursor:pointer}
+button.ghost{font:inherit;font-weight:700;font-size:15px;border:1px solid var(--line);background:var(--surface);color:var(--fg);padding:8px 14px;border-radius:10px;cursor:pointer}
+.readout{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.readout div{background:var(--sunk);border-radius:10px;padding:8px 12px}
+.readout b{display:block;font-family:var(--f-mono);font-size:20px;font-variant-numeric:tabular-nums}
+.readout small{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.06em;font-weight:700}
+.history{font-family:var(--f-mono);font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;min-height:1.5em}
+
+/* checks */
+details.q{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 16px}
+details.q summary{cursor:pointer;font-weight:700;list-style:none;display:flex;gap:10px}
+details.q summary::-webkit-details-marker{display:none}
+details.q summary::before{content:"?";flex:0 0 24px;height:24px;border-radius:50%;background:var(--gold-soft);color:var(--gold);display:grid;place-items:center;font-size:14px}
+details.q[open] summary::before{content:"✓";background:var(--felt-soft);color:var(--felt)}
+details.q > div{padding:10px 0 2px 34px;display:grid;gap:6px}
+
+.donebar{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:18px}
+
+table.dec{border-collapse:collapse;width:100%;font-size:15px}
+table.dec th,table.dec td{text-align:left;padding:9px 12px;border-top:1px solid var(--line);vertical-align:top}
+table.dec th{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+table.dec td:first-child{font-family:var(--f-mono);white-space:nowrap;color:var(--felt);font-weight:600}
+.scroll{overflow-x:auto}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.mini{display:grid;gap:6px}
+.mini h3{font-size:17px}
+.mini .f{font-family:var(--f-mono);font-size:14px;background:var(--sunk);padding:6px 10px;border-radius:8px;overflow-x:auto;white-space:nowrap}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="wrap">
+<header class="top">
+  <span class="label">Stats 102C · Chapter 1 · Study guide</span>
+  <h1>Monte Carlo, one idea at a time</h1>
+  <p class="muted">Six short modules, about 10 minutes each. Do one, tick it off, take a break. Every example in this chapter follows the same four-move recipe:</p>
+  <div class="recipe">
+    <span><b>1</b> Rewrite the answer as an <b>average</b> or a <b>fraction</b></span><i>→</i>
+    <span><b>2</b> Generate random samples</span><i>→</i>
+    <span><b>3</b> Average them</span><i>→</i>
+    <span><b>4</b> More samples = closer answer (LLN)</span>
+  </div>
+</header>
+
+<nav class="tabs" role="tablist" aria-label="Modules">
+  <button role="tab" data-t="m0"><span class="tick"></span>0 · Big picture</button>
+  <button role="tab" data-t="m1"><span class="tick"></span>1 · Area &amp; π</button>
+  <button role="tab" data-t="m2"><span class="tick"></span>2 · Integrals</button>
+  <button role="tab" data-t="m3"><span class="tick"></span>3 · Expectations</button>
+  <button role="tab" data-t="m4"><span class="tick"></span>4 · Bayesian</button>
+  <button role="tab" data-t="m5"><span class="tick"></span>Symbols &amp; cheat sheet</button>
+</nav>
+
+<!-- ============ MODULE 0 ============ -->
+<section class="mod" id="m0" role="tabpanel">
+  <div class="meta"><span class="pill">Slides 3–6</span><span class="pill">~8 min</span><span class="pill">No math yet</span></div>
+  <h2>What is Monte Carlo, and what are we assuming?</h2>
+  <div class="bigidea"><span class="label">The one idea</span><p>When a math problem is too hard to solve exactly, simulate it with lots of random numbers and let the average give you the answer.</p></div>
+
+  <div class="analogy"><span class="label">Picture it</span>
+    <p>You want to know what fraction of a jar of jellybeans is red. Counting every bean is the "exact" answer. Grabbing 500 random beans and counting the red ones is the Monte Carlo answer. It is not perfect, but it gets closer the bigger your handful.</p>
+  </div>
+
+  <div class="block">
+    <h3>Why "Monte Carlo"?</h3>
+    <p>Named after the casino in Monaco. Casinos run on randomness, and so does this method.</p>
+  </div>
+
+  <div class="card">
+    <span class="label">Three things Monte Carlo is used for</span>
+    <div class="grid2">
+      <div class="mini"><h3>Optimization</h3><p class="muted">Finding the best value of something by trying random guesses.</p></div>
+      <div class="mini"><h3>Numerical integration</h3><p class="muted">Finding areas under curves (Module 2).</p></div>
+      <div class="mini"><h3>Generating samples</h3><p class="muted">Producing random numbers that follow a given distribution.</p></div>
+    </div>
+    <p>Use it when the <b>closed-form</b> answer (a clean formula you can solve on paper) is hard or impossible.</p>
+  </div>
+
+  <div class="block">
+    <h3>Pseudorandom numbers, in four bullets</h3>
+    <ol class="steps">
+      <li><div>Computers <b>cannot</b> make truly random numbers. They run a hidden recipe (algorithm).</div></li>
+      <li><div>The recipe starts from a number called the <b>seed</b>. Same seed → exact same "random" numbers every time. So they are <b>pseudo</b> (fake) random, also called <b>deterministic</b>.</div></li>
+      <li><div>They are still <b>statistically random</b>: random enough for statistics. We just call them "random" from here on.</div></li>
+      <li><div>Setting the seed lets other people <b>reproduce</b> your results. In R: <code>set.seed(9999)</code>.</div></li>
+    </ol>
+  </div>
+
+  <div class="block">
+    <h3>The one assumption: we can draw from Unif(0, 1)</h3>
+    <div class="tx">
+      <div class="row"><div class="m">X ~ Unif(0, 1)</div><div class="e">"X is a random number between 0 and 1, and every value is equally likely."</div></div>
+      <div class="row"><div class="m">f(x) = 1 if x ∈ (0,1), 0 otherwise</div><div class="e">The <b>density</b> is a flat line at height 1 between 0 and 1, and zero everywhere else. Flat = equally likely.</div></div>
+      <div class="row"><div class="m">runif(n)</div><div class="e">R command: give me n uniform random numbers between 0 and 1. <code>runif(n, a, b)</code> gives them between a and b.</div></div>
+    </div>
+    <p class="muted">R's generator is called the Mersenne Twister. You only need to know the name.</p>
+  </div>
+
+  <div class="block">
+    <h3>Check yourself</h3>
+    <details class="q"><summary>Why do we call set.seed() before a simulation?</summary><div><p>So the random numbers come out the same every run. That makes the result reproducible: you (or your grader) get the same answer each time.</p></div></details>
+    <details class="q"><summary>Are computer random numbers truly random?</summary><div><p>No. They are pseudorandom: produced by a deterministic algorithm from a seed. But they behave randomly enough for statistical work.</p></div></details>
+    <details class="q"><summary>When is Monte Carlo the right tool?</summary><div><p>When the exact (closed-form) answer is difficult or impossible to compute.</p></div></details>
+  </div>
+  <div class="donebar"><span class="muted">Got it? Mark it and take a 2-minute break.</span><button class="act" data-done="m0">Mark module 0 done</button></div>
+</section>
+
+<!-- ============ MODULE 1 ============ -->
+<section class="mod" id="m1" role="tabpanel" hidden>
+  <div class="meta"><span class="pill">Slides 8–16</span><span class="pill">~15 min</span><span class="pill">Most important example</span></div>
+  <h2>Example 1: Finding an area by throwing darts</h2>
+  <div class="bigidea"><span class="label">The one idea</span><p>Area of the weird shape = area of the box × fraction of random darts that land in the shape.</p></div>
+
+  <div class="analogy"><span class="label">Picture it</span>
+    <p>A puddle sits on a 10 m × 10 m patio (100 m²). It starts raining evenly. If 30% of raindrops land in the puddle, the puddle is about 30% of the patio: 30 m². You never measured the puddle's edge.</p>
+  </div>
+
+  <div class="block">
+    <h3>The recipe</h3>
+    <ol class="steps">
+      <li><div>Draw a rectangle <b>A</b> that fully contains the shape <b>D</b>. You can compute the rectangle's area easily: width × height.</div></li>
+      <li><div>Throw <b>n</b> random points uniformly inside A (say n = 1000).</div></li>
+      <li><div>Count <b>M</b> = how many landed inside D.</div></li>
+      <li><div>Estimate: area of D ≈ area of A × M / n.</div></li>
+    </ol>
+  </div>
+
+  <div class="block">
+    <h3>The math, translated line by line</h3>
+    <div class="tx">
+      <div class="row"><div class="m">D ⊂ ℝ²</div><div class="e">D is a shape on a flat 2-D plane. (ℝ² = the x-y plane.)</div></div>
+      <div class="row"><div class="m">A : [x₁,x₂] × [y₁,y₂] ⊃ D</div><div class="e">A is the rectangle from x₁ to x₂ across and y₁ to y₂ up, and it <b>contains</b> D (⊃ means "contains").</div></div>
+      <div class="row"><div class="m">S(A) = (x₂−x₁)(y₂−y₁)</div><div class="e">S( ) means "area of". Rectangle area = width × height.</div></div>
+      <div class="row"><div class="m">p = S(D) / S(A)</div><div class="e">p is the chance one random dart lands in D. It equals the fraction of the box that D covers. This is the unknown we want.</div></div>
+      <div class="row"><div class="m">M ~ Bin(n, p)</div><div class="e">Counting "hits" out of n independent tries, each with success chance p, is exactly a <b>Binomial</b> count.</div></div>
+      <div class="row"><div class="m">E(M) = np,  Var(M) = np(1−p)</div><div class="e">Standard Binomial facts: average hits = n·p; spread = n·p·(1−p). Memorize these two.</div></div>
+      <div class="row"><div class="m">p̂ = M / n</div><div class="e">The hat <b>^</b> means "estimate of". Our estimate of p is just the fraction of hits.</div></div>
+      <div class="row"><div class="m">Ŝ(D) = S(A) · M / n</div><div class="e">Our area estimate = box area × hit fraction.</div></div>
+    </div>
+  </div>
+
+  <div class="block">
+    <h3>Is it a good estimator? Two checks.</h3>
+    <div class="grid2">
+      <div class="card">
+        <span class="label">Check 1 · Unbiased</span>
+        <p><b>On average, it hits the true answer.</b></p>
+        <div class="mini"><div class="f">E[Ŝ(D)] = S(A)/n · E(M)</div><div class="f">= S(A)/n · np</div><div class="f">= S(A) · p</div><div class="f">= S(A) · S(D)/S(A) = S(D) ✓</div></div>
+        <p class="muted">Move the constant S(A)/n outside E[ ], plug in E(M) = np, the n's cancel, then p = S(D)/S(A) and S(A) cancels.</p>
+      </div>
+      <div class="card">
+        <span class="label">Check 2 · Consistent</span>
+        <p><b>With more darts, the wobble shrinks to zero.</b></p>
+        <div class="mini"><div class="f">Var[Ŝ(D)] = (S(A)/n)² · Var(M)</div><div class="f">= (S(A)/n)² · np(1−p)</div><div class="f">= S(A)² p(1−p) / n</div><div class="f">→ 0 as n → ∞ ✓</div></div>
+        <p class="muted">Constants come out of Var <b>squared</b>. One n cancels, leaving n on the bottom. Bigger n → smaller variance.</p>
+      </div>
+    </div>
+    <div class="tx">
+      <div class="row"><div class="m">Ŝ(D) →<sup>P</sup> S(D)</div><div class="e"><b>Converges in probability</b> (= consistent): the chance of being far off goes to zero as n grows.</div></div>
+      <div class="row"><div class="m">Ŝ(D) →<sup>a.s.</sup> S(D)</div><div class="e"><b>Converges almost surely</b>: a stronger guarantee. The estimate itself settles on the truth. Comes from the <b>Strong Law of Large Numbers</b>.</div></div>
+    </div>
+  </div>
+
+  <div class="block">
+    <h3>Example 1a: Estimating π with this exact trick</h3>
+    <ol class="steps">
+      <li><div>Shape D = circle of radius 1 centered at (0,0): all points with x² + y² &lt; 1. Its area is πr² = π·1² = <b>π</b>.</div></li>
+      <li><div>Box A = the square from −1 to 1 in both directions. Area = 2 × 2 = <b>4</b>.</div></li>
+      <li><div>Throw n points in the square. A point is inside the circle if x² + y² &lt; 1.</div></li>
+      <li><div>π̂ = 4 × M / n.</div></li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <span class="label">Try it · throw the darts yourself</span>
+    <div class="demo">
+      <canvas id="piCanvas" width="600" height="600" aria-label="Square with unit circle and random points"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="piN">Number of darts n: <span id="piNv" class="mono">1000</span></label><input id="piN" type="range" min="1" max="4" step="0.01" value="3"></div>
+        <div class="ctl"><label for="piSeed">Seed (like set.seed)</label><div class="btns"><input id="piSeed" type="number" value="9999"><button class="ghost" id="piRand">Random seed</button></div></div>
+        <div class="btns"><button class="act" id="piGo">Throw darts</button></div>
+        <div class="readout">
+          <div><small>Inside (M)</small><b id="piM">–</b></div>
+          <div><small>π̂ = 4M/n</small><b id="piHat">–</b></div>
+          <div><small>True π</small><b>3.14159</b></div>
+          <div><small>Error</small><b id="piErr">–</b></div>
+        </div>
+        <div><span class="label">Your last runs</span><div class="history" id="piHist"></div></div>
+        <p class="muted" style="font-size:14px">Try: same seed twice (same answer). Then n = 10 vs n = 10,000 (watch the error shrink).</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="block">
+    <h3>The R code, line by line</h3>
+<pre class="r"><span class="c"># Same seed → same "random" numbers</span>
+set.seed(9999)
+n &lt;- 1000                <span class="c"># how many darts</span>
+X &lt;- runif(n, -1, 1)     <span class="c"># n random x-coordinates in [-1, 1]</span>
+Y &lt;- runif(n, -1, 1)     <span class="c"># n random y-coordinates in [-1, 1]</span>
+R2 &lt;- X^2 + Y^2          <span class="c"># squared distance from center, for each dart</span>
+M &lt;- sum(R2 &lt; 1)         <span class="c"># TRUE counts as 1 → number of darts inside the circle</span>
+pihat &lt;- (M / n) * 4     <span class="c"># fraction inside × box area</span>
+pihat
+<span class="o">[1] 3.164</span></pre>
+    <p class="muted">The plot code just draws the points with <code>plot(X, Y)</code> and the circle as two halves: <code>curve(sqrt(1 - x^2))</code> for the top and <code>curve(-sqrt(1 - x^2))</code> for the bottom.</p>
+  </div>
+
+  <div class="trap"><span class="label">Exam traps</span>
+    <ul>
+      <li>M is <b>Binomial(n, p)</b>, not Normal and not Uniform.</li>
+      <li>A constant comes out of Var <b>squared</b>: Var(cX) = c²Var(X). Out of E it comes out plain: E(cX) = cE(X).</li>
+      <li>For π, multiply by <b>4</b> (the square's area), not 2.</li>
+      <li>Unbiased = right on average. Consistent = gets right as n → ∞. They are different properties.</li>
+      <li>Bonus insight: error shrinks like 1/√n. To get 10× more accurate you need 100× more points.</li>
+    </ul>
+  </div>
+
+  <div class="block">
+    <h3>Check yourself</h3>
+    <details class="q"><summary>The box has area 50. Out of 2000 points, 600 land in D. Estimate the area of D.</summary><div><p>p̂ = 600/2000 = 0.3. Area ≈ 50 × 0.3 = <b>15</b>.</p></div></details>
+    <details class="q"><summary>Why is M a Binomial random variable?</summary><div><p>Each point independently either lands in D (success, chance p) or not. Counting successes in n independent yes/no trials with the same p is the definition of Binomial(n, p).</p></div></details>
+    <details class="q"><summary>Show the variance of Ŝ(D) goes to 0.</summary><div><p>Var = S(A)²·p(1−p)/n. The top is a fixed number, the bottom n grows without limit, so the fraction → 0.</p></div></details>
+    <details class="q"><summary>With n = 1000 the course got π̂ = 3.164. Is that a mistake?</summary><div><p>No. It is random error from a finite sample. Larger n would land closer to 3.14159 on average.</p></div></details>
+  </div>
+  <div class="donebar"><span class="muted">This one is the foundation. Break time after this.</span><button class="act" data-done="m1">Mark module 1 done</button></div>
+</section>
+
+<!-- ============ MODULE 2 ============ -->
+<section class="mod" id="m2" role="tabpanel" hidden>
+  <div class="meta"><span class="pill">Slides 18–24</span><span class="pill">~15 min</span><span class="pill">One clever trick</span></div>
+  <h2>Example 2: Monte Carlo integration</h2>
+  <div class="bigidea"><span class="label">The one idea</span><p>Area under a curve = width × average height. Find the average height by checking the curve at random spots.</p></div>
+
+  <div class="analogy"><span class="label">Picture it</span>
+    <p>A hilly field is 100 m long. You want the area of its side profile. Walk to 50 random spots, measure the hill's height at each, and average them: say 7 m. Area ≈ 100 × 7 = 700 m². That's the entire method.</p>
+  </div>
+
+  <div class="block">
+    <h3>The goal</h3>
+    <div class="tx">
+      <div class="row"><div class="m">I = ∫ₐᵇ g(x) dx</div><div class="e">I = the area under the curve g(x) between x = a and x = b. g might be too messy to integrate by hand.</div></div>
+    </div>
+  </div>
+
+  <div class="block">
+    <h3>The trick, translated</h3>
+    <p>We sneak in the Uniform(a, b) density, f(x) = 1/(b−a), by multiplying and dividing by it. Multiplying by f and by 1/f changes nothing, like multiplying by 3/3.</p>
+    <div class="tx">
+      <div class="row"><div class="m">∫ g(x) dx = ∫ g(x) · f(x) · (1/f(x)) dx</div><div class="e">Multiply and divide by f(x). Nothing changed yet.</div></div>
+      <div class="row"><div class="m">= (b−a) ∫ g(x) f(x) dx</div><div class="e">1/f(x) = b−a is a constant, so pull it out front.</div></div>
+      <div class="row"><div class="m">= (b−a) · E[g(X)]</div><div class="e">"∫ g(x) f(x) dx" is the <b>definition</b> of the expected value (average) of g(X). So: integral = width × average height.</div></div>
+    </div>
+  </div>
+
+  <div class="block">
+    <h3>The recipe</h3>
+    <ol class="steps">
+      <li><div>Generate X⁽¹⁾, …, X⁽ⁿ⁾ <b>iid</b> from Unif(a, b). (iid = independent and identically distributed: separate draws from the same distribution. The superscript ⁽ⁱ⁾ just numbers the draws.)</div></li>
+      <li><div>Plug each into g: compute g(X⁽¹⁾), …, g(X⁽ⁿ⁾). These are your "heights".</div></li>
+      <li><div>Average them: Ê[g(X)] = (1/n) Σ g(X⁽ⁱ⁾). Σ means "add them all up".</div></li>
+      <li><div>Multiply by the width: Îₙ = (b−a) × that average.</div></li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <span class="label">Why it works · The (Strong) Law of Large Numbers</span>
+    <div class="tx">
+      <div class="row"><div class="m">(1/n) Σ X⁽ⁱ⁾ →<sup>a.s.</sup> μ</div><div class="e">The average of many iid draws settles on the true mean μ.</div></div>
+      <div class="row"><div class="m">P( lim |avg − μ| &gt; ε ) = 0</div><div class="e">Same thing, formally: the chance that the long-run average stays off by more than any small amount ε is zero.</div></div>
+      <div class="row"><div class="m">(1/n) Σ g(X⁽ⁱ⁾) →<sup>a.s.</sup> E[g(X)]</div><div class="e"><b>Continuous Mapping Theorem</b> corollary: the same holds after you plug the draws into a function g. This is what Monte Carlo integration relies on.</div></div>
+    </div>
+  </div>
+
+  <div class="block">
+    <h3>Example 2a: ∫₀¹ eˣ dx</h3>
+    <p>True answer: e − 1 = 1.71828… Here a = 0, b = 1, so the width b − a = 1 and f(x) = 1. The integral is simply E[e<sup>X</sup>] with X ~ Unif(0,1). Estimate it by averaging e<sup>X</sup> over random X.</p>
+  </div>
+
+  <div class="card">
+    <span class="label">Try it · average the heights</span>
+    <div class="demo">
+      <canvas id="intCanvas" class="wide" width="640" height="480" aria-label="Curve e to the x with random sample heights"></canvas>
+      <div class="controls">
+        <div class="ctl"><label for="intN">Random spots n: <span id="intNv" class="mono">50</span></label><input id="intN" type="range" min="1" max="4" step="0.01" value="1.7"></div>
+        <div class="ctl"><label for="intSeed">Seed</label><div class="btns"><input id="intSeed" type="number" value="123"><button class="ghost" id="intRand">Random seed</button></div></div>
+        <div class="btns"><button class="act" id="intGo">Sample</button></div>
+        <div class="readout">
+          <div><small>Î = average height</small><b id="intHat">–</b></div>
+          <div><small>True e − 1</small><b>1.71828</b></div>
+          <div><small>Error</small><b id="intErr">–</b></div>
+          <div><small>n</small><b id="intNn">–</b></div>
+        </div>
+        <p class="muted" style="font-size:14px">Each green stick is one random height g(X⁽ⁱ⁾) = e<sup>X⁽ⁱ⁾</sup>. The orange dashed line is their average. Width is 1, so area = that average.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="block">
+    <h3>The R code</h3>
+<pre class="r">set.seed(123)
+n &lt;- 1000
+X &lt;- runif(n, 0, 1)   <span class="c"># step 1: n random spots in (0, 1)</span>
+g_X &lt;- exp(X)         <span class="c"># step 2: height of e^x at each spot</span>
+mean(g_X)             <span class="c"># step 3: average (width is 1, so no step 4)</span>
+<span class="o">[1] 1.713043</span>        <span class="c"># true answer 1.71828</span></pre>
+  </div>
+
+  <div class="trap"><span class="label">Exam traps</span>
+    <ul>
+      <li>Don't forget to multiply by <b>(b − a)</b> when the interval isn't (0, 1).</li>
+      <li>f(x) for Unif(a, b) is <b>1/(b−a)</b>, not 1. It equals 1 only on (0, 1).</li>
+      <li>The LLN is the reason it works. If asked "why does this converge?", say "Strong Law of Large Numbers".</li>
+    </ul>
+  </div>
+
+  <div class="block">
+    <h3>Check yourself</h3>
+    <details class="q"><summary>Write ∫₂⁵ x² dx as an expectation.</summary><div><p>Width = 5 − 2 = 3, X ~ Unif(2, 5). So I = 3 · E[X²].</p></div></details>
+    <details class="q"><summary>You sample 4 values of g(X) on (0, 4): 2, 5, 3, 6. Estimate I.</summary><div><p>Average height = (2+5+3+6)/4 = 4. Width = 4. Î = 4 × 4 = <b>16</b>.</p></div></details>
+    <details class="q"><summary>Why multiply and divide by f(x)?</summary><div><p>To turn the integral into the form ∫ g(x) f(x) dx, which is the definition of E[g(X)]. Expectations can be estimated by averaging samples.</p></div></details>
+  </div>
+  <div class="donebar"><span class="muted">Notice: same recipe as Module 1, just averaging heights instead of counting hits.</span><button class="act" data-done="m2">Mark module 2 done</button></div>
+</section>
+
+<!-- ============ MODULE 3 ============ -->
+<section class="mod" id="m3" role="tabpanel" hidden>
+  <div class="meta"><span class="pill">Slides 26–27</span><span class="pill">~8 min</span><span class="pill">Short</span></div>
+  <h2>Example 3: Computing expectations</h2>
+  <div class="bigidea"><span class="label">The one idea</span><p>To find a distribution's mean or variance, draw lots of samples from it and compute the sample mean and sample variance.</p></div>
+
+  <div class="analogy"><span class="label">Picture it</span>
+    <p>You want the average height of every adult in California. Measure 10,000 random people and average. The sample average stands in for the true average.</p>
+  </div>
+
+  <div class="block">
+    <h3>What we want, translated</h3>
+    <div class="tx">
+      <div class="row"><div class="m">E(X) = μ = ∫ x f(x) dx</div><div class="e">The <b>mean</b>: the long-run average value of X. f(x) is X's density.</div></div>
+      <div class="row"><div class="m">Var(X) = E[(X − μ)²]</div><div class="e">The <b>variance</b>: the average squared distance from the mean. How spread out X is.</div></div>
+    </div>
+    <p>f(x) may be known, but these integrals can be hard to compute exactly.</p>
+  </div>
+
+  <div class="block">
+    <h3>The recipe</h3>
+    <ol class="steps">
+      <li><div>Generate X⁽¹⁾, …, X⁽ⁿ⁾ from f(x).</div></li>
+      <li><div>Mean estimate: μ̂ = X̄ = (1/n) Σ X⁽ⁱ⁾. Just the average.</div></li>
+      <li><div>Variance estimate: V̂ = (1/n) Σ (X⁽ⁱ⁾ − μ̂)². Average squared distance from your estimated mean.</div></li>
+    </ol>
+    <div class="tx"><div class="row"><div class="m">(1/n) Σ g(X⁽ⁱ⁾) ≈ E[g(X)]</div><div class="e"><b>The master formula of this course.</b> Average of g over samples ≈ expected value of g. Mean uses g(x) = x. Variance uses g(x) = (x − μ)².</div></div></div>
+  </div>
+
+  <div class="trap"><span class="label">The catch (and the rest of the course)</span>
+    <ul>
+      <li>All of this needs samples <b>from f(x)</b>. Uniform is easy. Most distributions are not.</li>
+      <li>"How do we sample from f(x)?" is the hard part. Later chapters cover methods for this.</li>
+      <li>Note: the slide's variance uses 1/n, not 1/(n−1). Use what your course uses.</li>
+    </ul>
+  </div>
+
+  <div class="block">
+    <h3>Check yourself</h3>
+    <details class="q"><summary>Samples: 2, 4, 6. Estimate the mean and variance (1/n version).</summary><div><p>μ̂ = 12/3 = 4. Squared distances: 4, 0, 4. V̂ = 8/3 ≈ 2.67.</p></div></details>
+    <details class="q"><summary>How would you estimate E[X³]?</summary><div><p>Cube each sample and average: (1/n) Σ (X⁽ⁱ⁾)³. That's the master formula with g(x) = x³.</p></div></details>
+    <details class="q"><summary>What's the hard part of this approach?</summary><div><p>Generating samples from f(x) when f isn't a simple distribution like Uniform.</p></div></details>
+  </div>
+  <div class="donebar"><span class="muted">Short one. Keep going while the formula is fresh.</span><button class="act" data-done="m3">Mark module 3 done</button></div>
+</section>
+
+<!-- ============ MODULE 4 ============ -->
+<section class="mod" id="m4" role="tabpanel" hidden>
+  <div class="meta"><span class="pill">Slides 29–30</span><span class="pill">~12 min</span><span class="pill">Preview of later chapters</span></div>
+  <h2>Example 4: Bayesian inference</h2>
+  <div class="bigidea"><span class="label">The one idea</span><p>In Bayesian stats the unknown θ has its own distribution. Its best guess is that distribution's average, which we estimate by sampling θ many times and averaging.</p></div>
+
+  <div class="analogy"><span class="label">Picture it</span>
+    <p>You think a coin is probably fair (your <b>prior</b>). You flip it 20 times and get 15 heads (the <b>data</b>). Your updated belief about the coin's heads-rate is the <b>posterior</b>. Its average is your Bayesian estimate.</p>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <span class="label">Frequentist view</span>
+      <p>θ is a fixed unknown number. Pick the θ that makes the observed data most likely.</p>
+      <div class="mini"><div class="f">θ̂_MLE = argmax ∏ f(yᵢ | θ)</div></div>
+      <p class="muted">∏ = multiply all together. argmax = "the θ that gives the biggest value". MLE = maximum likelihood estimator.</p>
+    </div>
+    <div class="card">
+      <span class="label">Bayesian view</span>
+      <p>θ is random. Start with a prior π(θ), update it with the data to get the posterior p(θ | y).</p>
+      <div class="mini"><div class="f">p(θ | y) ∝ π(θ) · ∏ f(yᵢ | θ)</div></div>
+      <p class="muted">∝ = "proportional to". Posterior ∝ prior × likelihood.</p>
+    </div>
+  </div>
+
+  <div class="block">
+    <h3>The pieces, translated</h3>
+    <div class="tx">
+      <div class="row"><div class="m">y₁, …, yₙ ~ f(y | θ) iid</div><div class="e">Our data: n independent observations whose distribution depends on unknown θ. "|" reads as "given".</div></div>
+      <div class="row"><div class="m">π(θ)</div><div class="e">The <b>prior</b>: what we believe about θ before seeing data. (Here π is a name, not 3.14!)</div></div>
+      <div class="row"><div class="m">p(θ | y) = π(θ) ∏ f(yᵢ|θ) / Z(y)</div><div class="e">The <b>posterior</b>: updated belief after seeing data. Z(y) is a constant that makes it a proper distribution. Z is usually <b>very hard</b> to compute, which is why we write ∝ and drop it.</div></div>
+      <div class="row"><div class="m">E(θ | y) = ∫ θ p(θ | y) dθ</div><div class="e">The <b>Bayesian estimator</b> = posterior mean. Another expectation, so another job for Monte Carlo.</div></div>
+    </div>
+  </div>
+
+  <div class="block">
+    <h3>The recipe (same as always)</h3>
+    <ol class="steps">
+      <li><div>Generate θ⁽¹⁾, …, θ⁽ⁿ⁾ iid from the posterior p(θ | y).</div></li>
+      <li><div>Average them: θ̂_B = (1/n) Σ θ⁽ⁱ⁾.</div></li>
+    </ol>
+  </div>
+
+  <div class="trap"><span class="label">The catch</span>
+    <ul>
+      <li>Sampling from the posterior is hard, especially when Z(y) is unknown.</li>
+      <li>The course's answer, coming later: <b>Markov Chain Monte Carlo (MCMC)</b>.</li>
+      <li>Don't confuse the prior π(θ) with the number π.</li>
+    </ul>
+  </div>
+
+  <div class="block">
+    <h3>Check yourself</h3>
+    <details class="q"><summary>Posterior is proportional to what two things?</summary><div><p>The prior π(θ) times the likelihood ∏ f(yᵢ | θ).</p></div></details>
+    <details class="q"><summary>What is the Bayesian estimator of θ in this chapter?</summary><div><p>The posterior mean E(θ | y), estimated by averaging samples of θ drawn from the posterior.</p></div></details>
+    <details class="q"><summary>Frequentist vs Bayesian: what's θ in each?</summary><div><p>Frequentist: a fixed unknown number (estimated by MLE). Bayesian: a random variable with a prior distribution.</p></div></details>
+  </div>
+  <div class="donebar"><span class="muted">Last content module. Then review the cheat sheet.</span><button class="act" data-done="m4">Mark module 4 done</button></div>
+</section>
+
+<!-- ============ MODULE 5 ============ -->
+<section class="mod" id="m5" role="tabpanel" hidden>
+  <div class="meta"><span class="pill">Reference</span><span class="pill">Review before exams</span></div>
+  <h2>Symbol decoder and one-page cheat sheet</h2>
+
+  <div class="card">
+    <span class="label">The whole chapter in one table</span>
+    <div class="scroll"><table class="dec">
+      <tr><th>Example</th><th>Want</th><th>Rewrite as</th><th>Estimate</th></tr>
+      <tr><td>1 · Area</td><td>S(D)</td><td>S(A) · P(dart in D)</td><td>S(A) · M/n</td></tr>
+      <tr><td>1a · π</td><td>π</td><td>4 · P(x²+y² &lt; 1)</td><td>4 · M/n</td></tr>
+      <tr><td>2 · Integral</td><td>∫ₐᵇ g(x)dx</td><td>(b−a) · E[g(X)], X~Unif(a,b)</td><td>(b−a) · (1/n)Σ g(X⁽ⁱ⁾)</td></tr>
+      <tr><td>2a · eˣ</td><td>∫₀¹ eˣdx</td><td>E[eˣ], X~Unif(0,1)</td><td>mean(exp(runif(n)))</td></tr>
+      <tr><td>3 · Moments</td><td>E(X), Var(X)</td><td>E[g(X)]</td><td>sample mean, sample variance</td></tr>
+      <tr><td>4 · Bayes</td><td>E(θ | y)</td><td>posterior mean</td><td>(1/n)Σ θ⁽ⁱ⁾</td></tr>
+    </table></div>
+    <p class="muted">Why it always works: the Strong Law of Large Numbers. Averages of iid samples → the true expectation.</p>
+  </div>
+
+  <div class="card">
+    <span class="label">Symbol decoder</span>
+    <div class="scroll"><table class="dec">
+      <tr><th>Symbol</th><th>Read it as</th></tr>
+      <tr><td>x ∈ (0,1)</td><td>x is in the interval between 0 and 1</td></tr>
+      <tr><td>A ⊃ D</td><td>A contains D</td></tr>
+      <tr><td>ℝ²</td><td>the 2-D x-y plane</td></tr>
+      <tr><td>[x₁,x₂]×[y₁,y₂]</td><td>a rectangle: x from x₁ to x₂, y from y₁ to y₂</td></tr>
+      <tr><td>X ~ f</td><td>X is drawn from (follows) distribution f</td></tr>
+      <tr><td>iid</td><td>independent, identically distributed draws</td></tr>
+      <tr><td>X⁽ⁱ⁾</td><td>the i-th sample (not a power)</td></tr>
+      <tr><td>θ̂, p̂ (hat)</td><td>an estimate of θ, p</td></tr>
+      <tr><td>:=</td><td>"is defined as"</td></tr>
+      <tr><td>Σᵢ₌₁ⁿ</td><td>add up for i = 1 to n</td></tr>
+      <tr><td>∏ᵢ₌₁ⁿ</td><td>multiply together for i = 1 to n</td></tr>
+      <tr><td>∫ₐᵇ g(x)dx</td><td>area under g from a to b</td></tr>
+      <tr><td>E[X]</td><td>expected value: long-run average</td></tr>
+      <tr><td>Var(X)</td><td>variance: spread around the mean</td></tr>
+      <tr><td>Bin(n, p)</td><td>Binomial: # successes in n tries, chance p each</td></tr>
+      <tr><td>Unif(a, b)</td><td>Uniform: every value in (a, b) equally likely</td></tr>
+      <tr><td>→ᴾ</td><td>converges in probability (consistent)</td></tr>
+      <tr><td>→ᵃ·ˢ·</td><td>converges almost surely (stronger)</td></tr>
+      <tr><td>n → ∞</td><td>as the sample size grows forever</td></tr>
+      <tr><td>p(θ | y)</td><td>distribution of θ given data y</td></tr>
+      <tr><td>∝</td><td>proportional to (equal up to a constant)</td></tr>
+      <tr><td>argmax</td><td>the input that makes the value biggest</td></tr>
+    </table></div>
+  </div>
+
+  <div class="grid2">
+    <div class="card mini"><h3>Formulas to memorize</h3>
+      <div class="f">E(M)=np, Var(M)=np(1−p)</div>
+      <div class="f">E(cX)=cE(X), Var(cX)=c²Var(X)</div>
+      <div class="f">Unif(a,b): f(x)=1/(b−a)</div>
+      <div class="f">∫ₐᵇ g = (b−a)E[g(X)]</div>
+      <div class="f">(1/n)Σ g(X⁽ⁱ⁾) → E[g(X)]</div>
+      <div class="f">Var[Ŝ(D)] = S(A)²p(1−p)/n</div>
+    </div>
+    <div class="card mini"><h3>R commands</h3>
+      <div class="f">set.seed(k)  # reproducible</div>
+      <div class="f">runif(n, a, b)  # uniform draws</div>
+      <div class="f">sum(X^2 + Y^2 &lt; 1)  # count hits</div>
+      <div class="f">mean(exp(X))  # average heights</div>
+      <div class="f">plot(X, Y); curve(...)</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <span class="label">Final self-test · explain out loud in your own words</span>
+    <ol class="steps">
+      <li><div>What makes a number "pseudorandom", and why set a seed?</div></li>
+      <li><div>Walk through estimating π from start to finish.</div></li>
+      <li><div>Prove Ŝ(D) is unbiased (3 lines).</div></li>
+      <li><div>Turn ∫ₐᵇ g(x)dx into an expectation and say why.</div></li>
+      <li><div>What theorem guarantees Monte Carlo converges?</div></li>
+      <li><div>What's the "hard part" in Examples 3 and 4?</div></li>
+    </ol>
+    <p class="muted">If you can say all six without looking, you've mastered Chapter 1.</p>
+  </div>
+  <div class="donebar"><span class="muted" id="progressTxt"></span><button class="ghost" id="resetAll">Reset progress</button></div>
+</section>
+</div>
+
+<script>
+(function(){
+  // ---------- tabs + progress ----------
+  const tabs=[...document.querySelectorAll('nav.tabs button')];
+  const panels=[...document.querySelectorAll('section.mod')];
+  let done={};
+  try{done=JSON.parse(localStorage.getItem('mc1-done')||'{}')}catch(e){done={}}
+  function save(){try{localStorage.setItem('mc1-done',JSON.stringify(done))}catch(e){}}
+  function paint(){
+    tabs.forEach(b=>b.classList.toggle('done',!!done[b.dataset.t]));
+    document.querySelectorAll('[data-done]').forEach(b=>{b.textContent=done[b.dataset.done]?'Done ✓ (tap to undo)':'Mark '+b.textContent.replace(/^Mark |^Done.*$/,'').trim()||b.textContent});
+    const n=['m0','m1','m2','m3','m4'].filter(k=>done[k]).length;
+    const pt=document.getElementById('progressTxt'); if(pt) pt.textContent=n+' of 5 modules done';
+  }
+  document.querySelectorAll('[data-done]').forEach(b=>{b.dataset.label=b.textContent});
+  function paintBtns(){document.querySelectorAll('[data-done]').forEach(b=>{b.textContent=done[b.dataset.done]?'Done ✓ (tap to undo)':b.dataset.label})}
+  function show(id){
+    tabs.forEach(b=>b.setAttribute('aria-selected',b.dataset.t===id?'true':'false'));
+    panels.forEach(p=>p.hidden=p.id!==id);
+    try{localStorage.setItem('mc1-tab',id)}catch(e){}
+    if(id==='m1') drawPi(); if(id==='m2') drawInt();
+  }
+  tabs.forEach(b=>b.addEventListener('click',()=>{show(b.dataset.t);window.scrollTo({top:document.querySelector('nav.tabs').offsetTop-4})}));
+  document.querySelectorAll('[data-done]').forEach(b=>b.addEventListener('click',()=>{
+    const k=b.dataset.done; done[k]=!done[k]; save(); paintAll();
+    if(done[k]){const i=tabs.findIndex(t=>t.dataset.t===k); if(tabs[i+1]) setTimeout(()=>{show(tabs[i+1].dataset.t);window.scrollTo({top:document.querySelector('nav.tabs').offsetTop-4})},350)}
+  }));
+  document.getElementById('resetAll').addEventListener('click',()=>{done={};save();paintAll()});
+  function paintAll(){tabs.forEach(b=>b.classList.toggle('done',!!done[b.dataset.t]));paintBtns();const n=['m0','m1','m2','m3','m4'].filter(k=>done[k]).length;document.getElementById('progressTxt').textContent=n+' of 5 modules done'}
+
+  // ---------- seeded RNG (mulberry32): same seed, same numbers ----------
+  function rng(seed){let a=(seed>>>0)||1;return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+  const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const nFrom=v=>Math.round(Math.pow(10,+v));
+
+  // ---------- π demo ----------
+  const pc=document.getElementById('piCanvas'),px=pc.getContext('2d');
+  const piN=document.getElementById('piN'),piNv=document.getElementById('piNv'),piSeed=document.getElementById('piSeed');
+  const hist=[];
+  function drawPi(record){
+    const n=nFrom(piN.value), seed=+piSeed.value||1, R=rng(seed);
+    const W=pc.width, pad=24, s=(W-2*pad)/2, cx=W/2, cy=W/2;
+    px.clearRect(0,0,W,W);
+    px.strokeStyle=css('--line');px.lineWidth=2;px.strokeRect(pad,pad,W-2*pad,W-2*pad);
+    let M=0; const r=n>3000?1.6:n>500?2.4:n>50?3.5:5;
+    const cin=css('--dot-in'),cout=css('--dot-out');
+    for(let i=0;i<n;i++){const x=R()*2-1,y=R()*2-1,inn=x*x+y*y<1;if(inn)M++;px.fillStyle=inn?cin:cout;px.beginPath();px.arc(cx+x*s,cy-y*s,r,0,7);px.fill()}
+    px.strokeStyle=css('--fg');px.lineWidth=2.5;px.beginPath();px.arc(cx,cy,s,0,7);px.stroke();
+    const hat=4*M/n;
+    document.getElementById('piM').textContent=M.toLocaleString()+' / '+n.toLocaleString();
+    document.getElementById('piHat').textContent=hat.toFixed(4);
+    document.getElementById('piErr').textContent=(hat-Math.PI>=0?'+':'')+(hat-Math.PI).toFixed(4);
+    if(record){hist.unshift('n='+n+', seed '+seed+' → '+hat.toFixed(4));hist.length=Math.min(hist.length,5);document.getElementById('piHist').innerHTML=hist.join('<br>')}
+  }
+  piN.addEventListener('input',()=>{piNv.textContent=nFrom(piN.value).toLocaleString();drawPi()});
+  piSeed.addEventListener('change',()=>drawPi());
+  document.getElementById('piGo').addEventListener('click',()=>drawPi(true));
+  document.getElementById('piRand').addEventListener('click',()=>{piSeed.value=Math.floor(Math.random()*99999);drawPi(true)});
+
+  // ---------- integral demo ----------
+  const ic=document.getElementById('intCanvas'),ix=ic.getContext('2d');
+  const intN=document.getElementById('intN'),intNv=document.getElementById('intNv'),intSeed=document.getElementById('intSeed');
+  function drawInt(){
+    const n=nFrom(intN.value), R=rng(+intSeed.value||1);
+    const W=ic.width,H=ic.height,L=48,B=36,T=16,Rt=16, ymax=3;
+    const X=x=>L+x*(W-L-Rt), Y=y=>H-B-y/ymax*(H-B-T);
+    ix.clearRect(0,0,W,H);
+    ix.font='14px '+css('--f-mono');ix.fillStyle=css('--muted');ix.strokeStyle=css('--line');ix.lineWidth=1;
+    [0,1,2,3].forEach(v=>{ix.beginPath();ix.moveTo(L,Y(v));ix.lineTo(W-Rt,Y(v));ix.stroke();ix.fillText(v,L-22,Y(v)+5)});
+    ['0','0.5','1'].forEach((t,i)=>ix.fillText(t,X(i/2)-(i?14:4),H-12));
+    // area under curve
+    ix.fillStyle=css('--felt-soft');ix.beginPath();ix.moveTo(X(0),Y(0));for(let i=0;i<=100;i++){const x=i/100;ix.lineTo(X(x),Y(Math.exp(x)))}ix.lineTo(X(1),Y(0));ix.fill();
+    // sticks
+    let sum=0; const show=Math.min(n,400); ix.strokeStyle=css('--felt');ix.lineWidth=n>150?1:2;ix.globalAlpha=n>150?.5:.9;
+    for(let i=0;i<n;i++){const x=R(),g=Math.exp(x);sum+=g;if(i<show){ix.beginPath();ix.moveTo(X(x),Y(0));ix.lineTo(X(x),Y(g));ix.stroke()}}
+    ix.globalAlpha=1;
+    // curve
+    ix.strokeStyle=css('--fg');ix.lineWidth=2.5;ix.beginPath();for(let i=0;i<=100;i++){const x=i/100;i?ix.lineTo(X(x),Y(Math.exp(x))):ix.moveTo(X(x),Y(Math.exp(x)))}ix.stroke();
+    ix.fillStyle=css('--fg');ix.fillText('g(x) = eˣ',X(0.62),Y(2.35));
+    const avg=sum/n;
+    ix.setLineDash([8,6]);ix.strokeStyle=css('--chip');ix.lineWidth=2.5;ix.beginPath();ix.moveTo(X(0),Y(avg));ix.lineTo(X(1),Y(avg));ix.stroke();ix.setLineDash([]);
+    ix.fillStyle=css('--chip');ix.fillText('average = '+avg.toFixed(3),X(0.03),Y(avg)-8);
+    document.getElementById('intHat').textContent=avg.toFixed(4);
+    document.getElementById('intErr').textContent=(avg-(Math.E-1)>=0?'+':'')+(avg-(Math.E-1)).toFixed(4);
+    document.getElementById('intNn').textContent=n.toLocaleString();
+  }
+  intN.addEventListener('input',()=>{intNv.textContent=nFrom(intN.value).toLocaleString();drawInt()});
+  intSeed.addEventListener('change',drawInt);
+  document.getElementById('intGo').addEventListener('click',drawInt);
+  document.getElementById('intRand').addEventListener('click',()=>{intSeed.value=Math.floor(Math.random()*99999);drawInt()});
+
+  // redraw on theme change
+  try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{drawPi();drawInt()})}catch(e){}
+  new MutationObserver(()=>{drawPi();drawInt()}).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+
+  // init
+  let start='m0'; const h=(location.hash||'').slice(1);
+  try{start=localStorage.getItem('mc1-tab')||start}catch(e){}
+  if(/^m[0-5]$/.test(h)) start=h;
+  piNv.textContent=nFrom(piN.value).toLocaleString(); intNv.textContent=nFrom(intN.value).toLocaleString();
+  paintAll(); show(start); drawPi(); drawInt();
+  if(document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>drawInt());
+})();
+</script>
+
+</body></html>
